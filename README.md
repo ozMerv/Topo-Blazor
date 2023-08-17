@@ -1,19 +1,17 @@
-# Topo-Blazor
+# Topo-Blazor - Fork
 
 Topo is a helper application to assist scout leaders in getting meaningful reports out of the Scouts Australia Terrain application.
 
-Topo now runs as a Blazor Webassembly app in the browser and doesn't need to be installed.
+This version of Topo is a fork for testing and development only.
 
-The project can be found at https://github.com/NomisNostab/Topo-Blazor.
+The original project can be found at https://github.com/NomisNostab/Topo-Blazor.
 
-To run Topo just go to https://nomisnostab.github.io/Topo-Blazor/ and it will download and start, be patient while it downloads.
+Please DO NOT USE THIS VERSION FOR YOUR SCOUT REPORTS
 
-All new development will be done against the Topo-Blazor project, not this one.
 
-## Installation
-### Browser
-To run Topo just go to https://nomisnostab.github.io/Topo-Blazor/ and it will download and start, be patient while it downloads.
+### Original and Stable Version 
+To run the original Topo just go to https://nomisnostab.github.io/Topo-Blazor/ and it will download and start, be patient while it downloads.
 
-## Documentation
+## Original and Stable Documentation
 
 Please view the [wiki](https://github.com/NomisNostab/Topo-Blazor/wiki) on how to use Topo.
