@@ -27,6 +27,11 @@ public class Function
 {
     private ReportService reportService = new ReportService();
 
+    private JsonSerializerSettings _settings = new JsonSerializerSettings
+    {
+        DateParseHandling = DateParseHandling.None
+    };
+
     /// <summary>
     /// Returns a Member List Report in a base 64 string of the PDF or XLSX
     /// </summary>
@@ -45,7 +50,7 @@ public class Function
 
             var requestBody = request.Body;
             Console.WriteLine(requestBody);
-            var reportGenerationRequest = JsonConvert.DeserializeObject<ReportGenerationRequest>(requestBody);
+            var reportGenerationRequest = JsonConvert.DeserializeObject<ReportGenerationRequest>(requestBody, _settings);
             if (reportGenerationRequest != null)
             {
                 var workbook = reportService.CreateWorkbookWithSheets(1);
@@ -99,6 +104,8 @@ public class Function
                         break;
                 }
 
+                Console.WriteLine("Workbook completed");
+
                 if (workbook != null)
                 {
                     MemoryStream strm = new MemoryStream();
@@ -112,12 +119,16 @@ public class Function
                         //Convert Excel document into PDF document 
                         PdfDocument pdfDocument = renderer.ConvertToPDF(workbook);
                         pdfDocument.Save(strm);
+
+                        Console.WriteLine("Workbook streamed to PDF");
                     }
 
                     if (reportGenerationRequest.OutputType == OutputType.Excel)
                     {
                         //Stream as Excel file
                         workbook.SaveAs(strm);
+
+                        Console.WriteLine("Workbook streamed to Excel");
                     }
 
                     // return stream in browser
@@ -263,7 +274,7 @@ public class Function
         if (reportData != null)
         {
             var workbook = reportService.GenerateWallchartWorkbook(reportData, reportGenerationRequest.GroupName, reportGenerationRequest.Section
-                , reportGenerationRequest.UnitName, reportGenerationRequest.OutputType == OutputType.PDF);
+                , reportGenerationRequest.UnitName, reportGenerationRequest.OutputType == OutputType.PDF, reportGenerationRequest.BreakByPatrol);
             return workbook;
         }
         return reportService.CreateWorkbookWithSheets(1);
@@ -307,7 +318,7 @@ public class Function
 
     private IWorkbook GenerateTermProgramWorkbook(ReportGenerationRequest reportGenerationRequest)
     {
-        var reportData = JsonConvert.DeserializeObject<List<EventListModel>>(reportGenerationRequest.ReportData);
+        var reportData = JsonConvert.DeserializeObject<List<EventListModel>>(reportGenerationRequest.ReportData, _settings);
         if (reportData != null)
         {
             var workbook = reportService.GenerateTermProgramWorkbook(reportData, reportGenerationRequest.GroupName, reportGenerationRequest.Section

@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Topo.Model.Wallchart;
 using Topo.Model.ReportGeneration;
 using Topo.Services;
+using System.Reflection;
 
 namespace Topo.Controller
 {
@@ -34,17 +35,22 @@ namespace Topo.Controller
             if (!_storageService.IsAuthenticated)
                 NavigationManager.NavigateTo("index");
 
+            if (!string.IsNullOrEmpty(_storageService.UnitId))
+            {
+                model.UnitId = _storageService.UnitId;
+                model.UnitName = _storageService.UnitName;
+            }
+
             model.GroupName = _storageService.GroupNameDisplay;
             model.Units = _storageService.Units;
+            model.SuppressLastName = _storageService.SuppressLastName;
         }
 
         internal async Task UnitChange(ChangeEventArgs e)
         {
             var unitId = e.Value?.ToString() ?? "";
+            _storageService.UnitId = unitId;
             model.UnitId = unitId;
-            _storageService.UnitId = model.UnitId;
-            if (_storageService.Units != null)
-                _storageService.UnitName = _storageService.Units.Where(u => u.Key == model.UnitId).FirstOrDefault().Value;
             model.UnitName = _storageService.UnitName;
         }
 
@@ -54,6 +60,11 @@ namespace Topo.Controller
                 return;
 
             byte[] report = await WallchartReport(OutputType.PDF);
+            if (report.Length == 0)
+            {
+                model.ErrorMessage = "Group life request took too long. Please try Group Life for unit in Terrain first.";
+                return;
+            }
             var fileName = $"Wallchart_{model.UnitName.Replace(' ', '_')}.pdf";
 
             // Send the data to JS to actually download the file
@@ -66,6 +77,11 @@ namespace Topo.Controller
                 return;
 
             byte[] report = await WallchartReport(OutputType.Excel);
+            if (report.Length == 0)
+            {
+                model.ErrorMessage = "Group life request took too long. Please try Group Life for unit in Terrain first.";
+                return;
+            }
             var fileName = $"Wallchart_{model.UnitName.Replace(' ', '_')}.xlsx";
 
             // Send the data to JS to actually download the file
@@ -74,7 +90,13 @@ namespace Topo.Controller
 
         private async Task<byte[]> WallchartReport(OutputType outputType = OutputType.PDF)
         {
+            model.ErrorMessage = "";
+            _storageService.SuppressLastName = model.SuppressLastName;
             var wallchartItems = await _wallchartService.GetWallchartItems(model.UnitId);
+            if (wallchartItems.Count == 0)
+            {
+                return new byte[0];
+            }
 
             var groupName = _storageService.GroupName ?? "";
             var unitName = _storageService.UnitName ?? "";
@@ -82,7 +104,7 @@ namespace Topo.Controller
 
             var serialisedWallchartItems = JsonConvert.SerializeObject(wallchartItems);
 
-            var report = await _reportService.GetWallchartReport(groupName, section, unitName, outputType, serialisedWallchartItems);
+            var report = await _reportService.GetWallchartReport(groupName, section, unitName, outputType, serialisedWallchartItems, model.BreakByPatrol);
             return report;
         }
 

@@ -20,6 +20,8 @@ namespace Topo.Model.Progress
         public Stats Stats { get; set; } = new Stats();
         public List<SIASummary> SIASummaries { get; set; } = new List<SIASummary>();
         public PeakAward PeakAward { get; set; } = new PeakAward();
+        public string? DisableOAS { get; set; }
+        public string? DisableCoreOAS { get; set; }
     }
 
     public class MilestoneSummary
@@ -37,6 +39,8 @@ namespace Topo.Model.Progress
         public string ChallengeArea { get; set; } = string.Empty;
         public string EventName { get; set; } = string.Empty;
         public DateTime EventDate { get; set; }
+
+        public string ChallengeAreaAbbrev => ChallengeArea == "community" ? "(Co)" : ChallengeArea == "creative" ? "(Cr)" : ChallengeArea == "outdoors" ? "(O)" : ChallengeArea == "personal_growth" ? "(PG)" : "";
     }
 
     public class OASSummary
@@ -45,6 +49,7 @@ namespace Topo.Model.Progress
         public int Stage { get; set; }
         public DateTime Awarded { get; set; }
         public string Section { get; set; } = string.Empty;
+        public string Template { get; set; } = string.Empty;
     }
 
     public class Stats
@@ -52,6 +57,7 @@ namespace Topo.Model.Progress
         public int OasProgressions { get; set; }
         public int KmsHiked { get; set; }
         public int NightsCamped { get; set; }
+        public int NightsCampedInSection { get; set; }
     }
 
     public class SIASummary

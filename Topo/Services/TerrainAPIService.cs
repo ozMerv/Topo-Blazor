@@ -315,14 +315,10 @@ namespace Topo.Services
 
         public async Task AssumeProfile(string memberId)
         {
-            var glFound = false;
-            var profiles = _storageService.GetProfilesResult.profiles.ToList();
-            foreach (var profile in profiles)
+            if (_storageService.IsYouthMember)
             {
-                glFound = profile.group.roles.Any(x => x == "group-leader") || glFound;
-            }
-            if (!glFound)
                 return;
+            }
 
             await RefreshTokenAsync();
 
@@ -508,12 +504,24 @@ namespace Topo.Services
             httpRequest.Headers.Add("accept", "application/json, text/plain, */*");
             //httpRequest.Headers.Add("X-Amz-User-Agent", "aws-amplify/0.1.x js");
 
-            var response = await _httpClient.SendAsync(httpRequest);
-            var responseContent = response.Content.ReadAsStringAsync();
-            var result = responseContent.Result;
-            _logger.LogInformation($"Request: {requestUri}");
-            _logger.LogInformation($"Response: {result}");
-            return result;
+            var response = new HttpResponseMessage();
+            try
+            {
+                response = await _httpClient.SendAsync(httpRequest);
+                var responseContent = response.Content.ReadAsStringAsync();
+                var result = responseContent.Result;
+                _logger.LogInformation($"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; Request: {requestUri}");
+                _logger.LogInformation($"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; Response: {result}");
+                return result;
+            }
+            catch( Exception ex )
+            {
+                _logger.LogInformation($"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; Request: {requestUri}");
+                _logger.LogInformation($"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; StatusCode: {response.StatusCode}");
+                _logger.LogInformation($"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; Exception: {ex}");
+                return "";
+            }
+
         }
 
         private T DeserializeObject<T>(string result)
@@ -524,9 +532,9 @@ namespace Topo.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error deserialising: {typeof(T)}");
-                _logger.LogError($"String being processed: {result}");
-                _logger.LogError($"Exception message: {ex.Message}");
+                _logger.LogError($"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; Error deserialising: {typeof(T)}");
+                _logger.LogError($"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; String being processed: {result}");
+                _logger.LogError($"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; Exception message: {ex.Message}");
             }
             return JsonConvert.DeserializeObject<T>("");
         }

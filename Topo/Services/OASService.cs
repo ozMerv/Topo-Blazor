@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.IO;
+using Topo.Model.Members;
 using Topo.Model.OAS;
 
 namespace Topo.Services
@@ -9,6 +10,7 @@ namespace Topo.Services
         public Task<List<OASStageListModel>> GetOASStagesList();
         public Task<List<OASTemplate>> GetOASTemplate(string templateName);
         public Task<List<OASWorksheetAnswers>> GenerateOASWorksheetAnswers(string selectedUnitId, OASStageListModel selectedStage, bool hideCompletedMembers, List<OASTemplate> templateList);
+        public Task<List<OASWorksheetAnswers>> GenerateOASWorksheetAnswersForMember(string selectedUnitId, OASStageListModel selectedStage, bool hideCompletedMembers, List<OASTemplate> templateList, string memberId);
         public Task<GetUnitAchievementsResultsModel> GetUnitAchievements(string unit, string stream, string branch, int stage);
     }
 
@@ -166,10 +168,22 @@ namespace Topo.Services
             return 4;
         }
 
+        public async Task<List<OASWorksheetAnswers>> GenerateOASWorksheetAnswersForMember(string selectedUnitId, OASStageListModel selectedStage, bool hideCompletedMembers, List<OASTemplate> templateList, string memberId)
+        {
+            var members = await _membersService.GetMembersAsync(selectedUnitId);
+            var member = members.Where(m => m.member_number == memberId).ToList();
+            return await GenerateOASWorksheetAnswers(selectedUnitId, selectedStage, hideCompletedMembers, templateList, member);
+        }
+
         public async Task<List<OASWorksheetAnswers>> GenerateOASWorksheetAnswers(string selectedUnitId, OASStageListModel selectedStage, bool hideCompletedMembers, List<OASTemplate> templateList)
         {
-            var getUnitAchievementsResultsModel = await GetUnitAchievements(selectedUnitId, selectedStage.Stream.ToLower(), selectedStage.Branch, selectedStage.Stage);
             var members = await _membersService.GetMembersAsync(selectedUnitId);
+            return await GenerateOASWorksheetAnswers(selectedUnitId, selectedStage, hideCompletedMembers, templateList, members);
+        }
+
+        private async Task<List<OASWorksheetAnswers>> GenerateOASWorksheetAnswers(string selectedUnitId, OASStageListModel selectedStage, bool hideCompletedMembers, List<OASTemplate> templateList, List<MemberListModel> members)
+        {
+            var getUnitAchievementsResultsModel = await GetUnitAchievements(selectedUnitId, selectedStage.Stream.ToLower(), selectedStage.Branch, selectedStage.Stage);
             var sortedMemberList = members.Where(m => m.isAdultLeader == 0).OrderBy(m => m.first_name).ThenBy(m => m.last_name).ToList();
             var templateTitle = templateList.Count > 0 ? templateList[0].TemplateTitle : "";
             if (hideCompletedMembers)
@@ -190,9 +204,9 @@ namespace Topo.Services
                         InputTitleSortIndex = item.InputGroupSort,
                         InputSortIndex = item.Id,
                         MemberId = member.id,
-                        MemberName = $"{member.first_name} {member.last_name}",
+                        MemberName = $"{member.first_name} {_membersService.GetMemberLastName(selectedUnitId, member.id).Result}",
                         MemberPatrol = member.patrol_name,
-                        MemberAnswer = null,
+                        MemberAnswer = "",
                         Answered = false,
                         Awarded = false
                     };
@@ -220,10 +234,12 @@ namespace Topo.Services
                             {
                                 if (answer.Key == "logbook_up_to_date" && answer.Value == "true")
                                 {
+                                    worksheetAnswer.MemberAnswer = "Yes";
                                     worksheetAnswer.Answered = true;
                                 }
                                 else
                                 {
+                                    worksheetAnswer.MemberAnswer = answer.Value;
                                     worksheetAnswer.Answered = true;
                                 }
                             }
@@ -259,7 +275,7 @@ namespace Topo.Services
                         {
                             if (worksheetAnswer != null)
                             {
-                                worksheetAnswer.MemberAnswer = importedDate;
+                                worksheetAnswer.MemberAnswer = importedDate.ToString("dd/MM/yy");
                                 worksheetAnswer.Answered = true;
                                 worksheetAnswer.Awarded = true;
                             }
@@ -278,7 +294,7 @@ namespace Topo.Services
                             if (worksheetAnswer != null)
                             {
                                 {
-                                    worksheetAnswer.MemberAnswer = memberAchievement.status_updated;
+                                    worksheetAnswer.MemberAnswer = memberAchievement.status_updated.ToString("dd/MM/yy");
                                     worksheetAnswer.Answered = true;
                                     worksheetAnswer.Awarded = true;
                                 }
@@ -296,7 +312,7 @@ namespace Topo.Services
                                 .FirstOrDefault();
                             if (worksheetAnswer != null)
                             {
-                                worksheetAnswer.MemberAnswer = memberAchievement.status_updated;
+                                worksheetAnswer.MemberAnswer = memberAchievement.status_updated.ToString("dd/MM/yy");
                                 worksheetAnswer.Answered = true;
                                 worksheetAnswer.Awarded = true;
                             }
@@ -318,7 +334,7 @@ namespace Topo.Services
                         .FirstOrDefault();
                     if (logbookUpToDate != null)
                     {
-                        logbookUpToDate.MemberAnswer = memberAchievement.status_updated;
+                        logbookUpToDate.MemberAnswer = memberAchievement.status_updated.ToString("dd/MM/yy");
                         logbookUpToDate.Answered = true;
                         logbookUpToDate.Awarded = true;
                     }

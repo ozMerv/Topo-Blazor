@@ -17,7 +17,7 @@ namespace Topo.Services
         public Task<byte[]> GetSIAReport(string groupName, string section, string unitName, OutputType outputType, string serialisedReportData);
         public Task<byte[]> GetMilestoneReport(string groupName, string section, string unitName, OutputType outputType, string serialisedReportData);
         public Task<byte[]> GetLogbookReport(string groupName, string section, string unitName, OutputType outputType, string serialisedReportData);
-        public Task<byte[]> GetWallchartReport(string groupName, string section, string unitName, OutputType outputType, string serialisedWallchartItems);
+        public Task<byte[]> GetWallchartReport(string groupName, string section, string unitName, OutputType outputType, string serialisedWallchartItems, bool breakByPatrol);
         public Task<byte[]> GetAdditionalAwardsReport(string groupName, string section, string unitName, OutputType outputType, string serialisedReportData);
         public Task<byte[]> GetApprovalsReport(string groupName, string section, string unitName, OutputType outputType, string serialisedReportData, DateTime fromDate, DateTime toDate, bool groupByMember);
         public Task<byte[]> GetProgressReport(string groupName, string section, string unitName, OutputType outputType, string serialisedReportData);
@@ -27,10 +27,14 @@ namespace Topo.Services
     public class ReportService : IReportService
     {
         private readonly HttpClient _httpClient;
+        private readonly ILogger<TerrainAPIService> _logger;
+        private readonly StorageService _storageService;
 
-        public ReportService(HttpClient httpClient)
+        public ReportService(HttpClient httpClient, ILogger<TerrainAPIService> logger, StorageService storageService)
         {
             _httpClient = httpClient;
+            _logger = logger;
+            _storageService = storageService;
         }
         public async Task<byte[]> GetMemberListReport(string groupName, string section, string unitName, OutputType outputType, string serialisedSortedMemberList)
         {
@@ -182,7 +186,7 @@ namespace Topo.Services
             return report;
         }
 
-        public async Task<byte[]> GetWallchartReport(string groupName, string section, string unitName, OutputType outputType, string serialisedWallchartItems)
+        public async Task<byte[]> GetWallchartReport(string groupName, string section, string unitName, OutputType outputType, string serialisedWallchartItems, bool breakByPatrol = false)
         {
             var reportGenerationRequest = new ReportGenerationRequest()
             {
@@ -191,7 +195,8 @@ namespace Topo.Services
                 Section = section,
                 UnitName = unitName,
                 OutputType = outputType,
-                ReportData = serialisedWallchartItems
+                ReportData = serialisedWallchartItems,
+                BreakByPatrol = breakByPatrol
             };
 
             var report = await CallReportGeneratorFunction(reportGenerationRequest);
@@ -288,9 +293,10 @@ namespace Topo.Services
 #else
             string functionUrl = "https://qwhcdbhrempok4kpmk6utzavxq0zjzha.lambda-url.ap-southeast-2.on.aws/";
 #endif
-            string functionUrlLatest = "https://gkgfntjuhcuc3qtjmohaaxigwe0uevae.lambda-url.ap-southeast-2.on.aws/";
             HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Put, functionUrl);
-            var content = JsonConvert.SerializeObject(reportGenerationRequest);
+            var content = JsonConvert.SerializeObject(reportGenerationRequest, new JsonSerializerSettings { DateParseHandling = DateParseHandling.None});
+            string message = $"Version: {_storageService.Version}; Date: {DateTime.Now.ToString("dd/MM/yyyy : HH:mm:ss")}; ReportGenerationRequestData: {reportGenerationRequest.ReportData}";
+            _logger.LogInformation(message);
             httpRequest.Content = new StringContent(content, Encoding.UTF8, "application/json");
             httpRequest.Headers.Add("accept", "application/json, text/plain, */*");
             var response = await _httpClient.SendAsync(httpRequest);

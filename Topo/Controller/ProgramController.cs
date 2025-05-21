@@ -31,6 +31,11 @@ namespace Topo.Controller
         public ProgramPageViewModel model = new ProgramPageViewModel();
         private string groupCalendarId = string.Empty;
 
+        private JsonSerializerSettings _settings = new JsonSerializerSettings
+        {
+            DateParseHandling = DateParseHandling.None
+        };
+
         protected override async Task OnInitializedAsync()
         {
             if (!_storageService.IsAuthenticated)
@@ -39,16 +44,20 @@ namespace Topo.Controller
             model.GroupName = _storageService.GroupNameDisplay;
             await _programService.GetCalendars();
             model.Calendars = _storageService.Units;
-            model.CalendarSearchFromDate = DateTime.Now;
-            model.CalendarSearchToDate = DateTime.Now.AddMonths(4);
+            var quarter = (DateTime.Now.Month + 2) / 3;
+            var quarterStartMonth = (quarter - 1) * 3 + 1;
+            model.CalendarSearchFromDate = new DateTime(DateTime.Now.Year, quarterStartMonth, 1);
+            model.CalendarSearchToDate = model.CalendarSearchFromDate.AddMonths(4).AddDays(-1);
             model.DateErrorMessage = "";
             groupCalendarId = _storageService.GroupId ?? "";
+            model.CalendarId = _storageService.UnitId;
         }
 
         internal void CalendarChange(ChangeEventArgs e)
         {
             var calendarId = e.Value?.ToString() ?? "";
             model.CalendarId = calendarId;
+            _storageService.UnitId = calendarId;
         }
 
         internal async Task ShowUnitCalendarClick()
@@ -61,7 +70,6 @@ namespace Topo.Controller
             }
             if (!string.IsNullOrEmpty(model.CalendarId))
             {
-                _storageService.UnitName = _storageService.Units.Where(u => u.Key == model.CalendarId)?.FirstOrDefault().Value ?? "";
                 _storageService.UnitId = model.CalendarId;
                 await _programService.SetCalendar(model.CalendarId);
                 var events = await _programService.GetEventsForDates(model.CalendarSearchFromDate, model.CalendarSearchToDate);
@@ -156,7 +164,7 @@ namespace Topo.Controller
             var unitName = _storageService.UnitName ?? "Unit Name";
             var section = _storageService.Section;
 
-            var serialisedTermProgramData = JsonConvert.SerializeObject(model.Events);
+            var serialisedTermProgramData = JsonConvert.SerializeObject(model.Events, _settings);
             var report = await _reportService.GetTermProgramReport(groupName, section, unitName, outputType, serialisedTermProgramData);
 
             return report;

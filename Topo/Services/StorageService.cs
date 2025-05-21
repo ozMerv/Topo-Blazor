@@ -1,4 +1,6 @@
-﻿using Topo.Model.AdditionalAwards;
+﻿using System.Data.SqlTypes;
+using System.Reflection;
+using Topo.Model.AdditionalAwards;
 using Topo.Model.Login;
 using Topo.Model.Members;
 using Topo.Model.OAS;
@@ -11,6 +13,9 @@ namespace Topo.Services
         public event Action OnChange;
         public string ClientId { get; set; } = string.Empty;
         private bool _isAuthenticated;
+        private bool _isYouthMember;
+        private string _unitId = string.Empty;
+
         public bool IsAuthenticated
         {
             get { return _isAuthenticated; }
@@ -44,22 +49,53 @@ namespace Topo.Services
             get
             {
                 return GetProfilesResult?.profiles?
-                    .Where(p => p.group.name == GroupName)
-                    .Where(p => p.member.name == MemberName)
+                    .Where(p => p.unit != null)
+                    .Where(p => p.group.name == (GroupName ?? ""))
+                    .Where(p => p.member.name == (MemberName ?? ""))
                     .Select(p => p.unit)
-                    .ToDictionary(p => p?.id?.ToString() ?? "", p => p?.name ?? "");
+                    .ToDictionary(u => u?.id?.ToString() ?? "", u => u?.name ?? "");
             }
         }
-        public string UnitId { get; set; } = "";
-        public string UnitName { get; set; } = "";
+        public string UnitId
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_unitId) && Units.Count == 1)
+                {
+                    _unitId = Units.First().Key;
+                }
+                return _unitId;
+            }
+            set
+            {
+                _unitId = value;
+            }
+        }
+
+        public string UnitName
+        {
+            get
+            {
+                if (Units != null)
+                    return Units.Where(u => u.Key == UnitId).FirstOrDefault().Value;
+                else
+                    return string.Empty;
+            }
+        }
         public string Section
         {
             get
             {
-                var unit = GetProfilesResult.profiles.FirstOrDefault(u => u.unit.name == UnitName);
-                if (unit == null)
-                    throw new IndexOutOfRangeException($"No unit found with name {UnitName}. You may not have permissions to this section");
-                return unit.unit.section;
+                var profile = GetProfilesResult?.profiles?.Where(p => p.group != null && p.unit != null && p.unit.id == _unitId).Select(p => p).FirstOrDefault();
+                if (profile == null)
+                {
+                    throw new IndexOutOfRangeException($"No unit found with id {_unitId}. You may not have permissions to this section");
+
+                }
+                else
+                {
+                    return profile.unit.section;
+                }
             }
         }
         public List<KeyValuePair<string, List<MemberListModel>>> CachedMembers { get; set; } = new List<KeyValuePair<string, List<MemberListModel>>>();
@@ -73,6 +109,24 @@ namespace Topo.Services
             IsAuthenticated = false;
             GroupName = "";
             CachedMembers = new List<KeyValuePair<string, List<MemberListModel>>>();
+            _unitId = "";
+            GetProfilesResult = null;
         }
+        public bool IsYouthMember
+        {
+            get { return _isYouthMember; }
+            set
+            {
+                if (_isYouthMember != value)
+                {
+                    _isYouthMember = value;
+                    NotifyStateChanged();
+                }
+            }
+        }
+
+        public bool SuppressLastName { get; set; }
+
+        public string Version = "1.63";
     }
 }
